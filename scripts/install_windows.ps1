@@ -1110,19 +1110,13 @@ function Unregister-Language {
         Write-Host "  [提示] 未定位到前端 JS bundle($ResourcesPath\ion-dist)，跳过语言注销。" -ForegroundColor DarkYellow
         return
     }
-    $needles = @(',"zh-CN"', ',"zh-TW"', ',"zh-HK"')
-    $jsFiles = @(Get-FrontendJsFilesContaining $assetsDir $needles)
+    # 只移除补丁追加到白名单的中文项，保留原生语言对象键和其他语言列表。
+    $jsFiles = @(Get-FrontendJsFilesContaining $assetsDir @('"en-US","de-DE","fr-FR","ko-KR","ja-JP"'))
+    $regex = [System.Text.RegularExpressions.Regex]::new($LanguageListPattern)
     foreach ($file in $jsFiles) {
         $text = [System.IO.File]::ReadAllText($file.FullName, [System.Text.Encoding]::UTF8)
-        $updated = $text
-        $changed = $false
-        foreach ($lang in $needles) {
-            if ($updated.Contains($lang)) {
-                $updated = $updated.Replace($lang, '')
-                $changed = $true
-            }
-        }
-        if ($changed) {
+        $updated = $regex.Replace($text, "$BaseLanguageList]")
+        if ($updated -cne $text) {
             [System.IO.File]::WriteAllText($file.FullName, $updated, $Utf8NoBom)
             Write-Host "  removed language whitelist entries: $($file.Name)" -ForegroundColor Green
         }
